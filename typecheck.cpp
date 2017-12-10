@@ -118,7 +118,7 @@ void TypeCheck::visitClassNode(ClassNode* node) {
     typeError(main_class_members_present);
   }
 
-  // visit members
+  // visit local members
   currentVariableTable = (*classTable)[name].members;
   currentMemberOffset = 0;
   std::list<DeclarationNode*>* d = node->declaration_list;
@@ -136,6 +136,29 @@ void TypeCheck::visitClassNode(ClassNode* node) {
       delete v;
     }
   }
+
+  // visit super class members 
+  if (node->identifier_2) {
+    std::string currentClassName = node->identifier_2->name;
+    while (currentClassName.compare("")) {
+      ClassInfo currentInfo = classTable->at(currentClassName);
+      for (std::map<std::string, VariableInfo>::iterator it = currentInfo.members->begin(); it != currentInfo.members->end(); it++) {
+        VariableInfo* v = new VariableInfo();
+        v->type = it->second.type;
+        v->offset = currentMemberOffset;
+        currentMemberOffset += 4;
+        v->size = 4;
+
+        std::string memberName = it->first;
+        currentVariableTable->insert(std::pair<std::string, VariableInfo>(memberName, *v));
+
+        delete v;
+      }
+
+      currentClassName = currentInfo.superClassName;
+    }
+  }
+
   (*classTable)[name].membersSize = currentMemberOffset;
 
 
