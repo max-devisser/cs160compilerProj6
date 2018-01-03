@@ -57,11 +57,11 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
 
     node->visit_children(this);
 
-    // if (currentMethodName == currentClassName) {
-    // 	gen(
-    // 		"mov 8(%ebp), %eax"
-    // 	);
-    // }
+    if (currentMethodName == currentClassName) {
+    	gen(
+    		"mov 8(%ebp), %eax"
+    	);
+    }
 
     gen(
     	"pop %edi",
@@ -260,7 +260,7 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 		"# visitDivideNode",
 		"pop %ebx",
 		"pop %eax",
-		"cdq"
+		"cdq",
 		"idiv %ebx",
 		"push %eax"
 	);
@@ -272,8 +272,8 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
 		"# visitGreaterNode",
-		"pop %eax",
 		"pop %ebx",
+		"pop %eax",
 		"cmp %ebx, %eax",
 		"jg greater" + currentLabel,
 		"mov $0, %eax",
@@ -291,8 +291,8 @@ void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
 		"# visitGreaterEqualNode",
-		"pop %eax",
 		"pop %ebx",
+		"pop %eax",
 		"cmp %ebx, %eax",
 		"jge greaterequal" + currentLabel,
 		"mov $0, %eax",
@@ -371,13 +371,14 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-    node->visit_children(this);
-
     gen("# visitMethodCallNode");
 
     int numArgs = 0;
     if (node->expression_list) {
    		numArgs = node->expression_list->size();
+   		for (std::list<ExpressionNode*>::reverse_iterator iter = node->expression_list->rbegin(); iter != node->expression_list->rend(); iter++) {
+   			(*iter)->accept(this);
+   		}
 	}
 
 	int offset = 0;
@@ -387,17 +388,11 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 	if (!node->identifier_2) {
 		methodName = node->identifier_1->name;
 		className = currentClassName;
-		while(className.compare("")) {
-			className = classTable->at(className).superClassName;
-		}
 
 		offset += 8;
 	} else {
 		methodName = node->identifier_2->name;
 		className = node->identifier_1->objectClassName;
-		while(className.compare("")) {
-			className = classTable->at(className).superClassName;
-		}
 
 		if (currentMethodInfo.variables->count(node->identifier_1->name)) {
 			offset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
@@ -405,6 +400,10 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 		else {
 			offset += 8 + currentClassInfo.members->at(node->identifier_1->name).offset;
 		}
+	}
+
+	while(!classTable->at(className).methods->count(methodName)) {
+			className = classTable->at(className).superClassName;
 	}
 
 	gen(
@@ -440,19 +439,16 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
     
     if (currentMethodInfo.variables->count(node->identifier->name)) {
     	// local variable
-    	gen("push " + 
-    		std::to_string(currentMethodInfo.variables->
-    			at(node->identifier->name).offset) + 
-    		"(%ebp)"
+    	gen(
+    		"# fuck: " + node->identifier->name,
+    		"push " + std::to_string(currentMethodInfo.variables->
+    			at(node->identifier->name).offset) + "(%ebp)"
     	);
     } else {
     	// member variable
     	gen(
-    		"mov 8(%ebp), %ebx",
-    		"mov " + std::to_string(currentClassInfo.members->
-    			at(node->identifier->name).offset) +
-    			"(%ebx), %eax",
-    		"push %eax"
+    		"push " + std::to_string(8 + currentClassInfo.members->
+    			at(node->identifier->name).offset) + "(%ebp)"
     	);
     }
 }
