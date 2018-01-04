@@ -98,9 +98,9 @@ void checkArguments(std::string methodName, MethodTable* methodTable, std::list<
       c->objectClassName = (*callParamIt)->objectClassName;
       if (c->baseType != expectedParamIt->baseType || c->objectClassName != expectedParamIt->objectClassName) {
         // looks like its an error of the objects type not being set, all of the calls for f1 have bools in them
-        std::cout << methodName << ":" << std::endl;
-        std::cout << "Expected: " << expectedParamIt->baseType << "," << expectedParamIt->objectClassName << std::endl;
-        std::cout << "Got: " << c->baseType << "," << c->objectClassName << std::endl;
+        // std::cout << methodName << ":" << std::endl;
+        // std::cout << "Expected: " << expectedParamIt->baseType << "," << expectedParamIt->objectClassName << std::endl;
+        // std::cout << "Got: " << c->baseType << "," << c->objectClassName << std::endl;
         typeError(argument_type_mismatch);
       }
       expectedParamIt++;
@@ -155,7 +155,7 @@ void TypeCheck::visitClassNode(ClassNode* node) {
 
   if (node->identifier_2) {
     classInfo->superClassName = node->identifier_2->name;
-    if ((*classTable).count(classInfo->superClassName) == 0) {
+    if (classTable->count(classInfo->superClassName) == 0) {
       typeError(undefined_class);
     }
   } else {
@@ -237,7 +237,7 @@ void TypeCheck::visitClassNode(ClassNode* node) {
 }
 
 void TypeCheck::visitMethodNode(MethodNode* node) {
-  
+  // WE NEVER SET THE BASETYPE OF METHODNODES
 
   MethodInfo* methodInfo = new MethodInfo();
   currentMethodTable = (*classTable)[currentClassName].methods;
@@ -262,6 +262,10 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   std::list<ParameterNode*>* p = node->parameter_list;
 
   node->visit_children(this);
+
+  CompoundType t = typeMap(node->type);
+  node->basetype = t.baseType;
+  node->objectClassName = t.objectClassName;
 
   if (p) {
     for (std::list<ParameterNode*>::iterator it = p->begin(); it != p->end(); it++) {
@@ -296,38 +300,47 @@ void TypeCheck::visitMethodBodyNode(MethodBodyNode* node) {
 }
 
 void TypeCheck::visitParameterNode(ParameterNode* node) {
-  CompoundType t = typeMap(node->type);
-  node->basetype = t.baseType;
-  node->objectClassName = t.objectClassName;
+  if (classTable->count(node->type->objectClassName) != 0 || node->type->basetype == bt_boolean || node->type->basetype == bt_integer) {
+    CompoundType t = typeMap(node->type);
+    node->basetype = t.baseType;
+    node->objectClassName = t.objectClassName;
 
-  VariableInfo* v = new VariableInfo();
-  v->type = t;
-  v->offset = currentParameterOffset;
-  currentParameterOffset += 4;
-  v->size = 4;
-  currentVariableTable->insert(std::pair<std::string, VariableInfo>(node->identifier->name, *v));
+    VariableInfo* v = new VariableInfo();
+    v->type = t;
+    v->offset = currentParameterOffset;
+    currentParameterOffset += 4;
+    v->size = 4;
+    currentVariableTable->insert(std::pair<std::string, VariableInfo>(node->identifier->name, *v));
 
-  delete v;
+    delete v;
+  } else {
+    typeError(undefined_class);
+  }
 }
 
 void TypeCheck::visitDeclarationNode(DeclarationNode* node) {
-  CompoundType t = typeMap(node->type);
-  node->basetype = t.baseType;
-  node->objectClassName = t.objectClassName;
-  std::list<IdentifierNode*>* i = node->identifier_list;
-  for (std::list<IdentifierNode*>::iterator it = i->begin(); it != i->end(); it++) {
-    (*it)->basetype = t.baseType;
-    (*it)->objectClassName = t.objectClassName;
-    VariableInfo* v = new VariableInfo();
-    v->type = t;
-    v->offset = currentLocalOffset;
-    currentLocalOffset -= 4;
-    v->size = 4;
-    if (currentVariableTable) {
-      currentVariableTable->insert(std::pair<std::string, VariableInfo>((*it)->name, *v));
+  node->visit_children(this);
+  if (classTable->count(node->type->objectClassName) != 0 || node->type->basetype == bt_boolean || node->type->basetype == bt_integer) {
+    CompoundType t = typeMap(node->type);
+    node->basetype = t.baseType;
+    node->objectClassName = t.objectClassName;
+
+    for (std::list<IdentifierNode*>::iterator it = node->identifier_list->begin(); it != node->identifier_list->end(); it++) {
+      (*it)->basetype = t.baseType;
+      (*it)->objectClassName = t.objectClassName;
+      VariableInfo* v = new VariableInfo();
+      v->type = t;
+      v->offset = currentLocalOffset;
+      currentLocalOffset -= 4;
+      v->size = 4;
+      if (currentVariableTable) {
+        currentVariableTable->insert(std::pair<std::string, VariableInfo>((*it)->name, *v));
+      }
+      
+      delete v;
     }
-    
-    delete v;
+  } else {
+    typeError(undefined_class);
   }
 }
 
@@ -337,10 +350,6 @@ void TypeCheck::visitReturnStatementNode(ReturnStatementNode* node) {
   node->objectClassName = node->expression->objectClassName;
 }
 
-// void updateType(ASTNode* dest, CompoundType src)
-// void checkArguments(std::string methodName, MethodTable* methodTable, std::list<ExpressionNode*>* callParamList)
-// bool findMethod(std::string methodName, std::string className, ClassTable* classTable, std::list<ExpressionNode*>* callParamList, ASTNode* node)
-// bool findMember(std::string memberName, std::string className, ClassTable* classTable, MethodCallNode* node)
 void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
   node->visit_children(this);
 
@@ -368,6 +377,7 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
       if (memberTable->count(node->identifier_2->name)) {
         updateType(node->identifier_2, memberTable->at(node->identifier_2->name).type);
         if (node->identifier_2->basetype != node->expression->basetype || node->identifier_2->objectClassName != node->expression->objectClassName) {
+          std::cout << "1" << std::endl;
           typeError(assignment_type_mismatch);
         }
       } else {
@@ -389,8 +399,8 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     if (found) {
       CompoundType idC = (*currentVariableTable)[node->identifier_1->name].type;
       if (idC.baseType != node->expression->basetype || idC.objectClassName != node->expression->objectClassName) {
-          //std::cout <<  << std::endl;
-          //typeError(assignment_type_mismatch);
+          std::cout << "2" << std::endl;
+          typeError(assignment_type_mismatch);
       }
 
     } else {
@@ -398,6 +408,8 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     }
   }
 }
+
+
 
 void TypeCheck::visitCallNode(CallNode* node) {
   node->visit_children(this);
@@ -555,7 +567,8 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
   bool found = false;
   // no dot operator
   if (node->identifier_2 == NULL) {
-    found = findMethod(node->identifier_1->name, currentClassName, classTable, node->expression_list, node->identifier_1);
+  	// SHOULD WE BE UPDATING THE TYPE OF ID 1 HERE OR UPDATING NODE ITSELF?
+    found = findMethod(node->identifier_1->name, currentClassName, classTable, node->expression_list, node);//->identifier_1);
 
     if (!found) {
       typeError(undefined_method);
@@ -738,8 +751,8 @@ void TypeCheck::visitIdentifierNode(IdentifierNode* node) {
 }
 
 void TypeCheck::visitIntegerNode(IntegerNode* node) {
-  node->basetype = bt_integer;
-  node->objectClassName = "";
+  // node->basetype = bt_integer;
+  // node->objectClassName = "";
 }
 
 
