@@ -97,10 +97,6 @@ void checkArguments(std::string methodName, MethodTable* methodTable, std::list<
       c->baseType = (*callParamIt)->basetype;
       c->objectClassName = (*callParamIt)->objectClassName;
       if (c->baseType != expectedParamIt->baseType || c->objectClassName != expectedParamIt->objectClassName) {
-        // looks like its an error of the objects type not being set, all of the calls for f1 have bools in them
-        // std::cout << methodName << ":" << std::endl;
-        // std::cout << "Expected: " << expectedParamIt->baseType << "," << expectedParamIt->objectClassName << std::endl;
-        // std::cout << "Got: " << c->baseType << "," << c->objectClassName << std::endl;
         typeError(argument_type_mismatch);
       }
       expectedParamIt++;
@@ -252,7 +248,6 @@ void TypeCheck::visitMethodNode(MethodNode* node) {
   methodInfo->variables = new VariableTable();
   currentLocalOffset = -4;
   currentVariableTable = methodInfo->variables;
-  // std::cout << "curVarTable updated" << std::endl;
 
   
 
@@ -377,7 +372,6 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
       if (memberTable->count(node->identifier_2->name)) {
         updateType(node->identifier_2, memberTable->at(node->identifier_2->name).type);
         if (node->identifier_2->basetype != node->expression->basetype || node->identifier_2->objectClassName != node->expression->objectClassName) {
-          std::cout << "1" << std::endl;
           typeError(assignment_type_mismatch);
         }
       } else {
@@ -399,7 +393,6 @@ void TypeCheck::visitAssignmentNode(AssignmentNode* node) {
     if (found) {
       CompoundType idC = (*currentVariableTable)[node->identifier_1->name].type;
       if (idC.baseType != node->expression->basetype || idC.objectClassName != node->expression->objectClassName) {
-          std::cout << "2" << std::endl;
           typeError(assignment_type_mismatch);
       }
 
