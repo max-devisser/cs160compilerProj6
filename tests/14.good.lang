@@ -2,8 +2,8 @@ classA {
 
        f0(integer x, boolean y) -> integer {
        	    integer val;
-
-       	    if y {
+	    
+    	    if y {
 	       val = x * x;
 	    } else {
 	       val = x / 2;
