@@ -41,10 +41,12 @@ def runTests():
 
 		try:
 			if (err):
-				if (len(err.decode("utf-8").strip().split("\n")) > 1):
-					print("Multiple errors produced.\n")
-				else:
-					print(err.decode("utf-8"))
+				for e in err.decode("utf-8").strip().split("\n"):
+					print(e)
+				# if (len(err.decode("utf-8").strip().split("\n")) > 1):
+				# 	print("Multiple errors produced.\n")
+				# else:
+				# 	print(err.decode("utf-8"))
 			else:
 				args = []
 				if (platform == "darwin"):

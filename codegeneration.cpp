@@ -20,12 +20,18 @@ void CodeGenerator::visitProgramNode(ProgramNode* node) {
 		"printstr: .asciz \"%d\\n\"",
 		".text",
 		".globl Main_main"
+		"",
+		"# visitProgramNode"
 	);
 
 	node->visit_children(this);
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
+	gen(
+		"# visitClassNode"
+	);
+
 	currentClassName = node->identifier_1->name;
 	currentClassInfo = classTable->at(currentClassName);
 	node->visit_children(this);
@@ -393,6 +399,11 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 	} else {
 		methodName = node->identifier_2->name;
 		className = node->identifier_1->objectClassName;
+		std::cout << node->basetype << std::endl;
+		gen(methodName);
+		gen(node->identifier_1->name);
+		std::cout << node->identifier_1->basetype << std::endl;
+		gen("ClassName: " + className);
 
 		if (currentMethodInfo.variables->count(node->identifier_1->name)) {
 			offset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
@@ -401,7 +412,6 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 			offset += 8 + currentClassInfo.members->at(node->identifier_1->name).offset;
 		}
 	}
-
 	while(!classTable->at(className).methods->count(methodName)) {
 			className = classTable->at(className).superClassName;
 	}
@@ -419,6 +429,7 @@ void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
 
     gen("# visitMemberAccessNode");
 
+    std::cout << node->identifier_1->objectClassName << "." << node->identifier_2->name << std::endl;
     int offset = classTable->at(node->identifier_1->objectClassName).members->at(node->identifier_2->name).offset;
     if (currentMethodInfo.variables->count(node->identifier_1->name)) {
     	offset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
@@ -440,7 +451,6 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
     if (currentMethodInfo.variables->count(node->identifier->name)) {
     	// local variable
     	gen(
-    		"# fuck: " + node->identifier->name,
     		"push " + std::to_string(currentMethodInfo.variables->
     			at(node->identifier->name).offset) + "(%ebp)"
     	);
