@@ -121,7 +121,6 @@ bool findMember(std::string memberName, std::string className, ClassTable* class
   while(className.compare("")) {
     if ((*classTable)[className].members->count(memberName)) {
       updateType(node, (*classTable)[className].members->at(memberName).type);
-      std::cout << node->basetype << "," << node->objectClassName << std::endl;
       return true;
     }
     className = (*classTable)[className].superClassName;
@@ -592,7 +591,6 @@ void TypeCheck::visitMethodCallNode(MethodCallNode* node) {
       foundVar = findMember(node->identifier_1->name, className, classTable, node->identifier_1);
     }
 
-    std::cout << node->identifier_1->name<< "." <<node->identifier_2->name << " (" <<node->identifier_1->objectClassName << ")"<< std::endl;
     if (foundVar) {
       // check variable is an object
       if (!classTable->count(node->identifier_1->objectClassName)) {
@@ -727,6 +725,7 @@ void TypeCheck::visitBooleanLiteralNode(BooleanLiteralNode* node) {
 
 void TypeCheck::visitNewNode(NewNode* node) {
   if ((*classTable).count(node->identifier->name)) {
+    node->visit_children(this);
     node->basetype = bt_object;
     node->objectClassName = node->identifier->name;
   } else {

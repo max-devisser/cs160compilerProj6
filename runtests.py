@@ -65,6 +65,7 @@ def runTests():
 						print("Output:")
 						print(out.decode("utf-8"))
 					else:
+						#print(err.decode("utf-8"))
 						print("Exited with an error.\n")
 					remove("tests/exec")
 				else:

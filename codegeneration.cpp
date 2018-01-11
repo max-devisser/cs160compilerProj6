@@ -21,20 +21,28 @@ void CodeGenerator::visitProgramNode(ProgramNode* node) {
 		".text",
 		".globl Main_main"
 		"",
-		"# visitProgramNode"
+		" # Begin Program Node"
 	);
 
 	node->visit_children(this);
+
+	gen(
+		" # End Program Node"
+	);
 }
 
 void CodeGenerator::visitClassNode(ClassNode* node) {
 	gen(
-		"# visitClassNode"
+		" # Begin Class Node: " + node->identifier_1->name
 	);
 
 	currentClassName = node->identifier_1->name;
 	currentClassInfo = classTable->at(currentClassName);
 	node->visit_children(this);
+
+	gen(
+		" # End Class Node: " + node->identifier_1->name
+	);
 }
 
 void CodeGenerator::visitMethodNode(MethodNode* node) {
@@ -42,16 +50,20 @@ void CodeGenerator::visitMethodNode(MethodNode* node) {
     currentMethodInfo = classTable->at(currentClassName).methods->at(currentMethodName);
 
     gen(
-    	"# visitMethodNode",
+    	" # Begin Method Node: " + currentMethodName,
     	currentClassName + "_" + currentMethodName + ":"
     );
 
     node->visit_children(this);
+
+    gen(
+    	" # End Method Node: " + currentMethodName
+    );
 }
 
 void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
     gen(
-    	"# visitMethodBodyNode",
+    	" # Begin Method Body Node",
     	"push %ebp",
     	"mov %esp, %ebp",
     	"sub $" + std::to_string(currentMethodInfo.localsSize) + ", %esp",
@@ -75,7 +87,8 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
     	"pop %ebx",
     	"mov %ebp, %esp",
     	"pop %ebp",
-    	"ret"
+    	"ret",
+    	" # End Method Body Node"
     );
 
 
@@ -83,21 +96,17 @@ void CodeGenerator::visitMethodBodyNode(MethodBodyNode* node) {
 
 void CodeGenerator::visitParameterNode(ParameterNode* node) {
     node->visit_children(this);
-
-	gen("# visitParameterNode");
 }
 
 void CodeGenerator::visitDeclarationNode(DeclarationNode* node) {
     node->visit_children(this);
-
-	gen("# visitDeclarationNode");
 }
 
 void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitReturnStatementNode",
+		" # Return Statement Node",
 		"pop %eax"
 	);
 }
@@ -105,7 +114,12 @@ void CodeGenerator::visitReturnStatementNode(ReturnStatementNode* node) {
 void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
     node->visit_children(this);
 
-    gen("# visitAssignmentNode");
+    std::cout << " # Begin Assignment Node: ";
+    if (!node->identifier_2) {
+    	std::cout << node->identifier_1->name << std::endl;
+    } else {
+    	std::cout << node->identifier_1->name + "(" + node->identifier_1->objectClassName + ")." + node->identifier_2->name << std::endl;
+    }
 
     int offset = 0;
     if (node->identifier_2) {
@@ -120,7 +134,8 @@ void CodeGenerator::visitAssignmentNode(AssignmentNode* node) {
 
 	gen(
 		"pop %eax",
-		"mov %eax, " + std::to_string(offset) + "(%ebp)"
+		"mov %eax, " + std::to_string(offset) + "(%ebp)",
+		" # End Assignment Node"
 	);
 }
 
@@ -129,15 +144,12 @@ void CodeGenerator::visitCallNode(CallNode* node) {
 }
 
 void CodeGenerator::visitIfElseNode(IfElseNode* node) {
-    gen(
-		"# visitIfElseNode"
- 	);
-
     node->expression->accept(this);
 
     std::string currentLabel = std::to_string(nextLabel());
 
     gen(
+    	" # Begin If Else Node"
 		"pop %eax",
 		"cmp $0, %eax",
 		"je else" + currentLabel
@@ -164,14 +176,15 @@ void CodeGenerator::visitIfElseNode(IfElseNode* node) {
 	}
 
 	gen(
-		"end" + currentLabel + ":"
+		"end" + currentLabel + ":",
+		" # End If Else Node"
 	);
 }
 
 void CodeGenerator::visitWhileNode(WhileNode* node) {
     std::string currentLabel = std::to_string(nextLabel());
 	gen(
-		"# visitWhileNode",
+		" # Begin While Node",
 		"loopstart" + currentLabel + ":"
  	);
 
@@ -192,7 +205,8 @@ void CodeGenerator::visitWhileNode(WhileNode* node) {
 
 	gen(
 		"jmp loopstart" + currentLabel,
-		"loopend" + currentLabel + ":"
+		"loopend" + currentLabel + ":",
+		" # End While Node"
 	);
 }
 
@@ -200,17 +214,18 @@ void CodeGenerator::visitPrintNode(PrintNode* node) {
    node->visit_children(this);
 
    gen(
-   		"# visitPrintNode",
+   		" # Begin Print Node",
    		"push $printstr",
    		"call printf",
-   		"add $8, %esp"
+   		"add $8, %esp",
+   		" # End Print Node"
    );
 }
 
 void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
-		"# visitDoWhileNode",
+		" # Begin Do While Node",
 		"loopstart" + currentLabel + ":"
  	);
 
@@ -219,7 +234,8 @@ void CodeGenerator::visitDoWhileNode(DoWhileNode* node) {
 	gen(
 		"pop %eax",
 		"cmp $1, %eax",
-		"je loopstart" + currentLabel		
+		"je loopstart" + currentLabel,
+		" # End Do While Node"		
 	);
 }
 
@@ -227,11 +243,12 @@ void CodeGenerator::visitPlusNode(PlusNode* node) {
     node->visit_children(this);
 
 	gen(
-		"# visitPlusNode",
+		" # Begin Plus Node",
 		"pop %eax",
 		"pop %ebx",
 		"add %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End Plus Node"
 	);
 }
 
@@ -239,11 +256,12 @@ void CodeGenerator::visitMinusNode(MinusNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitMinusNode",
+		" # Begin Minus Node",
 		"pop %ebx",
 		"pop %eax",
 		"sub %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End Minus Node"
 	);
 }
 
@@ -251,11 +269,12 @@ void CodeGenerator::visitTimesNode(TimesNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitTimesNode",
+		" # Begin Times Node",
 		"pop %eax",
 		"pop %ebx",
 		"imul %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End Times Node"
 	);
 }
 
@@ -263,12 +282,13 @@ void CodeGenerator::visitDivideNode(DivideNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitDivideNode",
+		" # Begin Divide Node",
 		"pop %ebx",
 		"pop %eax",
 		"cdq",
 		"idiv %ebx",
-		"push %eax"
+		"push %eax",
+		" # End Divide Node"
 	);
 }
 
@@ -277,7 +297,7 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
 
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
-		"# visitGreaterNode",
+		" # Begin Greater Node",
 		"pop %ebx",
 		"pop %eax",
 		"cmp %ebx, %eax",
@@ -287,7 +307,8 @@ void CodeGenerator::visitGreaterNode(GreaterNode* node) {
 		"greater" + currentLabel + ":",
 		"mov $1, %eax",
 		"done" + currentLabel + ":",
-		"push %eax"
+		"push %eax",
+		" # End Greater Node"
 	);
 }
 
@@ -296,7 +317,7 @@ void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
 
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
-		"# visitGreaterEqualNode",
+		" # Begin Greater Equal Node",
 		"pop %ebx",
 		"pop %eax",
 		"cmp %ebx, %eax",
@@ -306,7 +327,8 @@ void CodeGenerator::visitGreaterEqualNode(GreaterEqualNode* node) {
 		"greaterequal" + currentLabel + ":",
 		"mov $1, %eax",
 		"done" + currentLabel + ":",
-		"push %eax"
+		"push %eax",
+		" # End Greater Equal Node"
 	);
 }
 
@@ -315,7 +337,7 @@ void CodeGenerator::visitEqualNode(EqualNode* node) {
 
 	std::string currentLabel = std::to_string(nextLabel());
 	gen(
-		"# visitEqualNode",
+		" # Begin Equal Node",
 		"pop %eax",
 		"pop %ebx",
 		"cmp %ebx, %eax",
@@ -325,7 +347,8 @@ void CodeGenerator::visitEqualNode(EqualNode* node) {
 		"equal" + currentLabel + ":",
 		"mov $1, %eax",
 		"done" + currentLabel + ":",
-		"push %eax"
+		"push %eax",
+		" # End Equal Node"
 	);
 }
 
@@ -333,11 +356,12 @@ void CodeGenerator::visitAndNode(AndNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitAndNode",
+		" # Begin And Node",
 		"pop %eax",
 		"pop %ebx",
 		"and %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End And Node"
 	);
 }
 
@@ -345,11 +369,12 @@ void CodeGenerator::visitOrNode(OrNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitOrNode",
+		" # Begin Or Node",
 		"pop %eax",
 		"pop %ebx",
 		"or %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End Or Node"
 	);
 }
 
@@ -357,11 +382,12 @@ void CodeGenerator::visitNotNode(NotNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitNotNode",
+		" # Begin Not Node",
 		"mov $1, %ebx",
 		"pop %eax",
 		"xor %ebx, %eax",
-		"push %eax"
+		"push %eax",
+		" # End Not Node"
 	);
 }
 
@@ -369,15 +395,28 @@ void CodeGenerator::visitNegationNode(NegationNode* node) {
 	node->visit_children(this);
 
 	gen(
-		"# visitNegationNode",
+		" # Begin Negation Node",
 		"pop %eax",
 		"neg %eax",
-		"push %eax"
+		"push %eax",
+		" # End Negation Node"
 	);
 }
 
 void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
-    gen("# visitMethodCallNode");
+    std::cout << " # Begin Method Call Node: ";
+    if (!node->identifier_2) {
+    	std::cout << node->identifier_1->name << std::endl;
+    } else {
+    	std::cout << node->identifier_1->name + "(" + node->identifier_1->objectClassName + ")." + node->identifier_2->name << std::endl;
+    }
+
+
+    gen(
+    	"push %eax",
+    	"push %ecx",
+    	"push %edx"
+    );
 
     int numArgs = 0;
     if (node->expression_list) {
@@ -399,11 +438,6 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 	} else {
 		methodName = node->identifier_2->name;
 		className = node->identifier_1->objectClassName;
-		std::cout << node->basetype << std::endl;
-		gen(methodName);
-		gen(node->identifier_1->name);
-		std::cout << node->identifier_1->basetype << std::endl;
-		gen("ClassName: " + className);
 
 		if (currentMethodInfo.variables->count(node->identifier_1->name)) {
 			offset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
@@ -420,33 +454,39 @@ void CodeGenerator::visitMethodCallNode(MethodCallNode* node) {
 		"push " + std::to_string(offset) + "(%ebp)",
 		"call " + className + "_" + methodName,
 		"add $" + std::to_string(4 * (numArgs + 1)) + ", %esp",
-		"push %eax"
+		"mov %eax, %edi",
+		"pop %edx",
+    	"pop %ecx",
+    	"pop %eax",
+    	"mov %edi, %eax",
+    	" # End Method Call Node"
 	);
 }
 
 void CodeGenerator::visitMemberAccessNode(MemberAccessNode* node) {
     node->visit_children(this);
 
-    gen("# visitMemberAccessNode");
+    gen(" # Begin Member Access Node: " + node->identifier_1->name + "(" + node->identifier_1->objectClassName + ")." + node->identifier_2->name);
 
-    std::cout << node->identifier_1->objectClassName << "." << node->identifier_2->name << std::endl;
-    int offset = classTable->at(node->identifier_1->objectClassName).members->at(node->identifier_2->name).offset;
+    int variableOffset = classTable->at(node->identifier_1->objectClassName).members->at(node->identifier_2->name).offset;
+    int memberOffset = 0;
     if (currentMethodInfo.variables->count(node->identifier_1->name)) {
-    	offset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
+    	memberOffset += currentMethodInfo.variables->at(node->identifier_1->name).offset;
     } else {
-    	offset += 8 + currentClassInfo.members->at(node->identifier_1->name).offset;
+    	memberOffset += 8 + currentClassInfo.members->at(node->identifier_1->name).offset;
     }
 
     gen(
-    	"mov " + std::to_string(offset) + "(%ebp), %eax",
-    	"push %eax"
+    	"mov " + std::to_string(memberOffset) + "(%ebp), %eax",
+    	"push " + std::to_string(variableOffset) + "(%eax)",
+    	" # End Member Access"
     );
 }
 
 void CodeGenerator::visitVariableNode(VariableNode* node) {
     node->visit_children(this);
 
-    gen("# visitVariableNode");
+    gen(" # Begin Variable Node: " + node->identifier->name);
     
     if (currentMethodInfo.variables->count(node->identifier->name)) {
     	// local variable
@@ -460,50 +500,73 @@ void CodeGenerator::visitVariableNode(VariableNode* node) {
     		"push " + std::to_string(8 + currentClassInfo.members->
     			at(node->identifier->name).offset) + "(%ebp)"
     	);
+    	//NEED TO SEPARATE MEMBER ACCESS THEN VARIABLE ACCESS
     }
+
+    gen(" # End Variable Node");
 }
 
 void CodeGenerator::visitIntegerLiteralNode(IntegerLiteralNode* node) {
     node->visit_children(this);
 
-    gen("# visitIntegerLiteralNode",
-    	"push $" + std::to_string(node->integer->value)
+    gen(" # Begin Integer Literal Node",
+    	"push $" + std::to_string(node->integer->value),
+    	" # End Integer Literal Node"
     );
 }
 
 void CodeGenerator::visitBooleanLiteralNode(BooleanLiteralNode* node) {
     node->visit_children(this);
 
-    gen("# visitBooleanLiteralNode",
-    	"push $" + std::to_string(node->integer->value)
+    gen(" # Begin Boolean Literal Node",
+    	"push $" + std::to_string(node->integer->value),
+    	" # End Boolean Literal Node"
     );
 }
 
 void CodeGenerator::visitNewNode(NewNode* node) {
-    node->visit_children(this);
+    //node->visit_children(this);
 
     std::string objectSize = std::to_string(classTable->at(node->identifier->name).membersSize);
 
     gen(
-    	"# visitNewNode",
+    	" # Begin New Node: " + node->identifier->name,
     	"push $" + objectSize,
     	"call malloc",
    		"add $4, %esp",
-   		"push %eax"
+   		"mov %eax, %edi"
    	);
 
     if (classTable->at(node->identifier->name).methods->count(node->identifier->name)) {
+    	gen(
+    		"push %eax",
+    		"push %ecx",
+    		"push %edx"
+    	);
+
     	int numArgs = 0;
     	if (node->expression_list) {
     		numArgs = node->expression_list->size();
+   			for (std::list<ExpressionNode*>::reverse_iterator iter = node->expression_list->rbegin(); iter != node->expression_list->rend(); iter++) {
+   				(*iter)->accept(this);
+   			}
 		}
 
 		gen(
+			"push %edi",
 			"call " + node->identifier->name + "_" + node->identifier->name,
 			"add $" + std::to_string(4 * (numArgs + 1)) + ", %esp",
-			"push %eax"
+			"mov %eax, %edi",
+			"pop %edx",
+    		"pop %ecx",
+    		"pop %eax",
+    		"mov %edi, %eax"
 		);
     }
+    gen(
+    	"push %eax",
+    	" # End New Node"
+   	);
 }
 
 void CodeGenerator::visitIntegerTypeNode(IntegerTypeNode* node) {
